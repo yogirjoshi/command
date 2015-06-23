@@ -4,6 +4,7 @@
     <groupId>rithm</groupId>
     <artifactId>rithm_modules</artifactId>
     <version>0.0.1-SNAPSHOT</version>
+    <relativePath>../rithm_modules/pom.xml</relativePath>
   </parent>
   <repositories>
   	<repository>
