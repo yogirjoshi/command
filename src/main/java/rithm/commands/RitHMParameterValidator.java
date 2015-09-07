@@ -6,8 +6,8 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.Charset;
-import java.nio.file.Files;
 import java.util.Properties;
+
 
 
 
@@ -22,37 +22,82 @@ import javax.swing.text.rtf.RTFEditorKit;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Options;
+import org.apache.log4j.Appender;
+import org.apache.log4j.FileAppender;
 import org.apache.log4j.Logger;
 
 import antlr.collections.List;
 
+// TODO: Auto-generated Javadoc
+/**
+ * The Class RiTHMParameterValidator.
+ */
+public class RitHMParameterValidator {
 
-public class RiTHMParameterValidator {
-
-	protected RiTHMParameters rithParams;
+	/** The rith params. */
+	protected RitHMParameters rithParams;
+	
+	/** The propmode. */
 	protected final short PROPMODE = 1;
+	
+	/** The cmdmode. */
 	protected final short CMDMODE  = 2;
 
+	/** The curr mode. */
 	protected short currMode;
+	
+	/** The prop. */
 	protected Properties prop = null; 
+	
+	/** The cmd line. */
 	protected CommandLine cmdLine;
+	
+	/** The options. */
 	protected Options options;
+	
+	/** The hlp formatter. */
 	protected HelpFormatter hlpFormatter;
-	final static Logger logger = Logger.getLogger(RiTHMParameterValidator.class);
-	public RiTHMParameterValidator()
+	
+	/** The Constant logger. */
+	final static Logger logger = Logger.getLogger(RitHMParameterValidator.class);
+	
+	/**
+	 * Instantiates a new ri thm parameter validator.
+	 */
+	public RitHMParameterValidator()
 	{
-		rithParams = new RiTHMParameters();
+		rithParams = new RitHMParameters();
 		currMode = PROPMODE;
 	}
-	public RiTHMParameterValidator(short mode)
+	
+	/**
+	 * Instantiates a new ri thm parameter validator.
+	 *
+	 * @param mode the mode
+	 */
+	public RitHMParameterValidator(short mode)
 	{
-		rithParams = new RiTHMParameters();
+		rithParams = new RitHMParameters();
 		this.currMode = mode;
 	}
+	
+	/**
+	 * Sets the mode.
+	 *
+	 * @param mode the new mode
+	 */
 	public void setMode(short mode)
 	{
 		currMode = mode;
 	}
+	
+	/**
+	 * Sets the cmd options.
+	 *
+	 * @param cmdLine the cmd line
+	 * @param options the options
+	 * @param hlpFormatter the hlp formatter
+	 */
 	public void setCmdOptions(CommandLine cmdLine, Options options,HelpFormatter hlpFormatter)
 	{
 		if(currMode == CMDMODE){
@@ -63,6 +108,41 @@ public class RiTHMParameterValidator {
 		}
 		throw new IllegalArgumentException("mode must be " + CMDMODE);
 	}
+	protected Properties fetchPropertyFromConfig(String keytoFetch)
+	{
+		switch (currMode) {
+			case PROPMODE:
+				Properties perOptionProps = new Properties();
+				String allOptions = (String)prop.getProperty(keytoFetch);
+				if(allOptions == null)
+					return null;
+				for(String eachOption: allOptions.split("#"))
+				{
+					String pair[] = eachOption.split("=");
+					if(pair.length != 2){
+						logger.fatal("Illegal option " + eachOption);
+						return null;
+					}
+					perOptionProps.put(pair[0], pair[1]);
+				}
+				return perOptionProps;
+			case CMDMODE:
+				if(cmdLine.hasOption(keytoFetch))
+					return cmdLine.getOptionProperties(keytoFetch);
+				else
+					return null;
+	
+			default:
+				break;
+		}
+		throw new IllegalArgumentException("Unknown source to fetch "+ keytoFetch);
+	}
+	/**
+	 * Fetch from config.
+	 *
+	 * @param keytoFetch the keyto fetch
+	 * @return the string
+	 */
 	protected String fetchFromConfig(String keytoFetch)
 	{
 		switch (currMode) {
@@ -77,32 +157,68 @@ public class RiTHMParameterValidator {
 		default:
 			break;
 		}
+//		cmdLine.get
 		throw new IllegalArgumentException("Unknown source to fetch "+ keytoFetch);
 	}
+	
+	/**
+	 * Fetch config file.
+	 *
+	 * @return the string
+	 */
 	public String fetchConfigFile()
 	{
 		if(cmdLine.hasOption("configFile"))
 			return cmdLine.getOptionValue("configFile");
 		return null;	
 	}
+	
+	/**
+	 * Fetch bool dual mode.
+	 *
+	 * @param keyToFetch the key to fetch
+	 * @return true, if successful
+	 */
 	public boolean fetchBoolDualMode(String keyToFetch)
 	{
 		if(cmdLine.hasOption(keyToFetch))
-			return Boolean.parseBoolean(cmdLine.getOptionValue(keyToFetch));
+//			return Boolean.parseBoolean(cmdLine.getOptionValue(keyToFetch));
+			return true;
 		else
 		{
 			String propFile = fetchConfigFile();
 			if(propFile!=null)
 				if(prop.getProperty(keyToFetch) != null)
-					return Boolean.parseBoolean(prop.getProperty(keyToFetch));
+//					return Boolean.parseBoolean(prop.getProperty(keyToFetch));
+					return true;
 		}
 		return false;	
 	}
-	protected final void printHelp()
+	
+	/**
+	 * Prints the help.
+	 */
+	public final void printHelp()
 	{
-		if(currMode == CMDMODE)
-			hlpFormatter.printHelp("RiTHMBrewer","RiTHM Options",options,"Check RiTHMLog for more log message",true);
+		Appender appender = Logger.getRootLogger().getAppender("RitHMFile") ;
+		if(appender != null){
+			if(appender instanceof FileAppender)
+			{
+				FileAppender fileAp = (FileAppender)appender;
+				hlpFormatter.printHelp("RiTHMBrewer","RiTHM Options",options,"Check " + fileAp.getFile() + " for more log messages",true);
+				return;
+			}
+		}
+		hlpFormatter.printHelp("RiTHMBrewer","RiTHM Options",options,"Configure log4j properties file for RitHM log messages",true);
 	}
+	
+	/**
+	 * Load prop file.
+	 *
+	 * @param propFile the prop file
+	 * @throws IOException Signals that an I/O exception has occurred.
+	 * @throws FileNotFoundException the file not found exception
+	 */
 	public void loadPropFile(String propFile) throws IOException,FileNotFoundException
 	{
 		InputStream is = null;
@@ -111,6 +227,12 @@ public class RiTHMParameterValidator {
 		prop.load(is);
 		is.close();
 	}
+	
+	/**
+	 * Validate pipe params.
+	 *
+	 * @return true, if successful
+	 */
 	protected boolean validatePipeParams()
 	{
 		for(int i = 1; i <= rithParams.pipeCount;i++)
@@ -153,9 +275,16 @@ public class RiTHMParameterValidator {
 		}
 		return true;
 	}
-	public RiTHMParameters validate(String propFile)
+	
+	/**
+	 * Validate.
+	 *
+	 * @param propFile the prop file
+	 * @return the ri thm parameters
+	 */
+	public RitHMParameters validate(String propFile)
 	{
-		rithParams = new RiTHMParameters();
+		rithParams = new RitHMParameters();
 		InputStream is = null;
 		try
 		{
@@ -197,16 +326,26 @@ public class RiTHMParameterValidator {
 					}
 				}else
 				{
+					if(currMode == CMDMODE)
+						rithParams.specString.replaceAll("#", "\n");
 					rithParams.specsFromFile = false;
 					logger.info("Loading specifications from " + rithParams.specString );
 				}
 			}
+			rithParams.resetOnViolation = Boolean.valueOf(fetchFromConfig("resetOnViolation"));
+			logger.info("Reset monitor after violation is handled:" + rithParams.resetOnViolation);
 			rithParams.plotFileName = fetchFromConfig("plotFileName");
-			if(rithParams.plotFileName == null)
-				rithParams.plotFileName = "TruthValuePlot";
+//			if(rithParams.plotFileName == null)
+//				rithParams.plotFileName = "TruthValuePlot";
+			
+			//TODO fix below
 			rithParams.outFileName = fetchFromConfig("monitorOutputLog");
 			if(rithParams.outFileName == null)
-				rithParams.outFileName = "defaultMonitorOutput";
+			{
+				rithParams.outFileName = fetchFromConfig("outputFile");
+//				rithParams.outFileName = (rithParams.outFileName == null)? "defaultMonitorOutput" : rithParams.outFileName;
+			}
+			
 			rithParams.dataFile = (String)fetchFromConfig("dataFile");
 			if(rithParams.dataFile != null)
 			{
@@ -218,9 +357,14 @@ public class RiTHMParameterValidator {
 				rithParams.dataFormat = (String)fetchFromConfig("dataFormat");
 				if(rithParams.dataFormat == null)
 				{
-					logger.fatal("dataFormat/dataFile must be provided");
-					printHelp();
-					return null;
+					if(fetchBoolDualMode("serverMode")){
+						logger.fatal("dataFormat/dataFile must be provided");
+						printHelp();
+						return null;
+					}else{
+						rithParams.isProcessingDatafile = true;
+						logger.info("Will process trace from " + System.in.toString());
+					}
 				}
 				else
 				{
@@ -242,7 +386,12 @@ public class RiTHMParameterValidator {
 				logger.info("Data to be received on socket as "+ rithParams.dataFormat);
 			
 			if(!pipeMode){
-					
+				if(fetchPropertyFromConfig("T") != null)
+					rithParams.customArgumentsProperties.put("T", fetchPropertyFromConfig("T"));
+				rithParams.monEventListenerName = (String)fetchFromConfig("monEventListener");
+				if(rithParams.monEventListenerName == null)
+					logger.info("DefaultMonitoringEventListener will be used");
+				
 				rithParams.specParserClass = (String)fetchFromConfig("specParserClass");
 				if(rithParams.specParserClass == null)
 				{
@@ -262,6 +411,7 @@ public class RiTHMParameterValidator {
 				}
 				else
 					logger.info("monitorClass is "+ rithParams.monitorClass);
+					
 				rithParams.pEvaluatorName = (String)fetchFromConfig("predicateEvaluatorType");
 				rithParams.pEvaluatorPath= (String)fetchFromConfig("predicateEvaluatorScriptFile");
 
